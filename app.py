@@ -105,10 +105,238 @@ def getStaffProfile(userId):
 	return profile
 
 
+def getTrekById(trekId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("SELECT * FROM treks WHERE id = ? LIMIT 1", (trekId,))
+	trek = cursor.fetchone()
+	connection.close()
+	return trek
+
+
+def getCurrentUser():
+	userId = session.get("userId")
+	if userId is None:
+		return None
+	return getUserById(userId)
+
+
+def buildSearchPattern(value):
+	value = (value or "").strip()
+	if not value:
+		return None
+	return f"%{value}%"
+
+
+def fetchStats():
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("SELECT COUNT(*) FROM treks")
+	trekCount = cursor.fetchone()[0]
+	cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'trekker'")
+	userCount = cursor.fetchone()[0]
+	cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'staff'")
+	staffCount = cursor.fetchone()[0]
+	cursor.execute("SELECT COUNT(*) FROM bookings")
+	bookingCount = cursor.fetchone()[0]
+	connection.close()
+	return {
+		"trekCount": trekCount,
+		"userCount": userCount,
+		"staffCount": staffCount,
+		"bookingCount": bookingCount,
+	}
+
+
+def fetchTreks(searchText=None):
+	connection = getConnection()
+	cursor = connection.cursor()
+	pattern = buildSearchPattern(searchText)
+
+	if pattern is None:
+		cursor.execute(
+			"""
+			SELECT t.*, u.name AS staff_name
+			FROM treks t
+			LEFT JOIN users u ON u.id = t.assigned_staff_id
+			ORDER BY t.id DESC
+			"""
+		)
+	else:
+		cursor.execute(
+			"""
+			SELECT t.*, u.name AS staff_name
+			FROM treks t
+			LEFT JOIN users u ON u.id = t.assigned_staff_id
+			WHERE t.trek_name LIKE ? OR t.location LIKE ? OR CAST(t.id AS TEXT) LIKE ?
+			ORDER BY t.id DESC
+			""",
+			(pattern, pattern, pattern),
+		)
+
+	treks = cursor.fetchall()
+	connection.close()
+	return treks
+
+
+def fetchUsers(searchText=None):
+	connection = getConnection()
+	cursor = connection.cursor()
+	pattern = buildSearchPattern(searchText)
+
+	if pattern is None:
+		cursor.execute("SELECT * FROM users ORDER BY id DESC")
+	else:
+		cursor.execute(
+			"""
+			SELECT * FROM users
+			WHERE name LIKE ? OR email LIKE ? OR CAST(id AS TEXT) LIKE ?
+			ORDER BY id DESC
+			""",
+			(pattern, pattern, pattern),
+		)
+
+	users = cursor.fetchall()
+	connection.close()
+	return users
+
+
+def fetchStaff(searchText=None):
+	connection = getConnection()
+	cursor = connection.cursor()
+	pattern = buildSearchPattern(searchText)
+
+	baseQuery = """
+		SELECT u.id, u.name, u.email, u.status, sp.approval_status, sp.contact, t.trek_name AS assigned_trek_name
+		FROM users u
+		LEFT JOIN staff_profile sp ON sp.user_id = u.id
+		LEFT JOIN treks t ON t.id = sp.assigned_trek_id
+		WHERE u.role = 'staff'
+	"""
+	if pattern is None:
+		cursor.execute(baseQuery + " ORDER BY u.id DESC")
+	else:
+		cursor.execute(
+			baseQuery + " AND (u.name LIKE ? OR u.email LIKE ? OR CAST(u.id AS TEXT) LIKE ?) ORDER BY u.id DESC",
+			(pattern, pattern, pattern),
+		)
+
+	staff = cursor.fetchall()
+	connection.close()
+	return staff
+
+
+def fetchBookings():
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute(
+		"""
+		SELECT b.*, u.name AS user_name, t.trek_name AS trek_name
+		FROM bookings b
+		LEFT JOIN users u ON u.id = b.user_id
+		LEFT JOIN treks t ON t.id = b.trek_id
+		ORDER BY b.id DESC
+		"""
+	)
+	bookings = cursor.fetchall()
+	connection.close()
+	return bookings
+
+
+def saveTrek(formData, trekId=None):
+	trekName = formData.get("trek_name", "").strip()
+	difficulty = formData.get("difficulty", "").strip()
+	duration = formData.get("duration", "0").strip() or "0"
+	availableSlots = formData.get("available_slots", "0").strip() or "0"
+	location = formData.get("location", "").strip()
+	status = formData.get("status", "Pending").strip() or "Pending"
+	startDate = formData.get("start_date", "").strip()
+	endDate = formData.get("end_date", "").strip()
+	description = formData.get("description", "").strip()
+	staffId = formData.get("assigned_staff_id", "").strip() or None
+
+	connection = getConnection()
+	cursor = connection.cursor()
+
+	if trekId is None:
+		cursor.execute(
+			"""
+			INSERT INTO treks (
+				trek_name, difficulty, duration, available_slots, assigned_staff_id,
+				status, start_date, end_date, location, description
+			)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			""",
+			(
+				trekName,
+				difficulty,
+				int(duration),
+				int(availableSlots),
+				staffId,
+				status,
+				startDate,
+				endDate,
+				location,
+				description,
+			),
+		)
+	else:
+		cursor.execute(
+			"""
+			UPDATE treks
+			SET trek_name = ?, difficulty = ?, duration = ?, available_slots = ?, assigned_staff_id = ?,
+				status = ?, start_date = ?, end_date = ?, location = ?, description = ?
+			WHERE id = ?
+			""",
+			(
+				trekName,
+				difficulty,
+				int(duration),
+				int(availableSlots),
+				staffId,
+				status,
+				startDate,
+				endDate,
+				location,
+				description,
+				trekId,
+			),
+		)
+
+	connection.commit()
+	connection.close()
+
+
+def setUserStatus(userId, status):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("UPDATE users SET status = ? WHERE id = ?", (status, userId))
+	connection.commit()
+	connection.close()
+
+
+def setStaffApproval(userId, approvalStatus):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("UPDATE staff_profile SET approval_status = ? WHERE user_id = ?", (approvalStatus, userId))
+	connection.commit()
+	connection.close()
+
+
+def setTrekStaff(trekId, staffId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("UPDATE treks SET assigned_staff_id = ? WHERE id = ?", (staffId or None, trekId))
+	connection.commit()
+	connection.close()
+
+
 def loginRequired(viewFunc):
 	@wraps(viewFunc)
 	def wrapper(*args, **kwargs):
-		if "userId" not in session:
+		user = getCurrentUser()
+		if user is None or user["status"] != "active":
+			session.clear()
 			return redirect(url_for("login"))
 		return viewFunc(*args, **kwargs)
 
@@ -119,12 +347,12 @@ def roleRequired(*roles):
 	def decorator(viewFunc):
 		@wraps(viewFunc)
 		def wrapper(*args, **kwargs):
-			userId = session.get("userId")
-			if userId is None:
+			user = getCurrentUser()
+			if user is None or user["status"] != "active":
+				session.clear()
 				return redirect(url_for("login"))
 
-			user = getUserById(userId)
-			if user is None or user["role"] not in roles:
+			if user["role"] not in roles:
 				return redirect(url_for("home"))
 
 			return viewFunc(*args, **kwargs)
@@ -238,6 +466,10 @@ def login():
 			flash("wrong login details")
 			return render_template("login.html")
 
+		if user["status"] != "active":
+			flash("account is not active")
+			return render_template("login.html")
+
 		if user["role"] == "staff":
 			profile = getStaffProfile(user["id"])
 			if profile is None or profile["approval_status"] != "approved":
@@ -261,7 +493,101 @@ def logout():
 @loginRequired
 @roleRequired("admin")
 def adminDashboard():
-	return render_template("admin_dashboard.html")
+	stats = fetchStats()
+	treks = fetchTreks(request.args.get("trekSearch"))
+	users = fetchUsers(request.args.get("userSearch"))
+	staff = fetchStaff(request.args.get("staffSearch"))
+	bookings = fetchBookings()
+	return render_template(
+		"admin_dashboard.html",
+		stats=stats,
+		treks=treks,
+		users=users,
+		staff=staff,
+		bookings=bookings,
+		currentUser=getCurrentUser(),
+	)
+
+
+@app.route("/admin/treks/add", methods=["POST"])
+@loginRequired
+@roleRequired("admin")
+def addTrek():
+	saveTrek(request.form)
+	flash("trek saved")
+	return redirect(url_for("adminDashboard"))
+
+
+@app.route("/admin/treks/<int:trekId>/edit", methods=["POST"])
+@loginRequired
+@roleRequired("admin")
+def editTrek(trekId):
+	saveTrek(request.form, trekId)
+	flash("trek updated")
+	return redirect(url_for("adminDashboard"))
+
+
+@app.route("/admin/treks/<int:trekId>/delete", methods=["POST"])
+@loginRequired
+@roleRequired("admin")
+def deleteTrek(trekId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("DELETE FROM treks WHERE id = ?", (trekId,))
+	connection.commit()
+	connection.close()
+	flash("trek removed")
+	return redirect(url_for("adminDashboard"))
+
+
+@app.route("/admin/treks/<int:trekId>/assign", methods=["POST"])
+@loginRequired
+@roleRequired("admin")
+def assignTrekStaff(trekId):
+	staffId = request.form.get("assigned_staff_id", "").strip() or None
+	setTrekStaff(trekId, staffId)
+	flash("staff assigned")
+	return redirect(url_for("adminDashboard"))
+
+
+@app.route("/admin/users/<int:userId>/toggle", methods=["POST"])
+@loginRequired
+@roleRequired("admin")
+def toggleUserStatus(userId):
+	user = getUserById(userId)
+	if user is None:
+		flash("user not found")
+		return redirect(url_for("adminDashboard"))
+
+	if user["role"] == "admin":
+		flash("admin cannot be changed")
+		return redirect(url_for("adminDashboard"))
+
+	newStatus = "active" if user["status"] != "active" else "blacklisted"
+	setUserStatus(userId, newStatus)
+	if user["role"] == "staff":
+		setStaffApproval(userId, "approved" if newStatus == "active" else "blacklisted")
+	flash("user status updated")
+	return redirect(url_for("adminDashboard"))
+
+
+@app.route("/admin/staff/<int:userId>/approve", methods=["POST"])
+@loginRequired
+@roleRequired("admin")
+def approveStaff(userId):
+	setStaffApproval(userId, "approved")
+	flash("staff approved")
+	return redirect(url_for("adminDashboard"))
+
+
+@app.route("/admin/staff/<int:userId>/blacklist", methods=["POST"])
+@loginRequired
+@roleRequired("admin")
+def blacklistStaff(userId):
+	setUserStatus(userId, "blacklisted")
+	setStaffApproval(userId, "blacklisted")
+	flash("staff blacklisted")
+	return redirect(url_for("adminDashboard"))
 
 
 @app.route("/staff")

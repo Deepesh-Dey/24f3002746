@@ -4,10 +4,313 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>admin dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            background: white;
+            color: black;
+            margin: 24px;
+        }
+
+        .topbar, .panel, .section, table {
+            border: 1px solid gray;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 18px;
+            background: white;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .stat {
+            border: 1px solid gray;
+            border-radius: 8px;
+            padding: 14px;
+            background: white;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 26px;
+            margin-top: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid gray;
+            padding: 10px;
+            vertical-align: top;
+            text-align: left;
+        }
+
+        input, select, textarea, button {
+            font: inherit;
+            padding: 8px;
+            margin: 4px 0;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 72px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 12px;
+        }
+
+        .row-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .message {
+            padding: 10px 12px;
+            background: lightyellow;
+            border: 1px solid gray;
+            margin-bottom: 12px;
+        }
+
+        a {
+            color: blue;
+        }
+    </style>
 </head>
 <body>
-    <h1>admin dashboard</h1>
-    <p>role: admin</p>
-    <p><a href="/logout">logout</a></p>
+    <div class="topbar">
+        <h1>admin dashboard</h1>
+        <p>welcome, {{ currentUser.name }}</p>
+        <p><a href="/logout">logout</a></p>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="message">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="stats">
+        <div class="stat">total treks<strong>{{ stats.trekCount }}</strong></div>
+        <div class="stat">total trekkers<strong>{{ stats.userCount }}</strong></div>
+        <div class="stat">total trek staff<strong>{{ stats.staffCount }}</strong></div>
+        <div class="stat">total bookings<strong>{{ stats.bookingCount }}</strong></div>
+    </div>
+
+    <div class="section">
+        <h2>add trek</h2>
+        <form method="post" action="/admin/treks/add">
+            <div class="grid">
+                <div><label>trek name</label><br><input type="text" name="trek_name" required></div>
+                <div><label>difficulty</label><br><input type="text" name="difficulty" required></div>
+                <div><label>duration</label><br><input type="number" name="duration" min="1" required></div>
+                <div><label>available slots</label><br><input type="number" name="available_slots" min="0" value="0" required></div>
+                <div><label>location</label><br><input type="text" name="location"></div>
+                <div><label>status</label><br><input type="text" name="status" value="Pending"></div>
+                <div><label>start date</label><br><input type="date" name="start_date"></div>
+                <div><label>end date</label><br><input type="date" name="end_date"></div>
+                <div>
+                    <label>assign staff</label><br>
+                    <select name="assigned_staff_id">
+                        <option value="">none</option>
+                        {% for member in staff %}
+                            {% if member.approval_status == 'approved' and member.status == 'active' %}
+                                <option value="{{ member.id }}">{{ member.name }} ({{ member.id }})</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <p><label>description</label><br><textarea name="description"></textarea></p>
+            <button type="submit">save trek</button>
+        </form>
+    </div>
+
+    <div class="section">
+        <h2>search</h2>
+        <form method="get" action="/admin" class="grid">
+            <div><label>trek search</label><br><input type="text" name="trekSearch" value="{{ request.args.get('trekSearch', '') }}"></div>
+            <div><label>user search</label><br><input type="text" name="userSearch" value="{{ request.args.get('userSearch', '') }}"></div>
+            <div><label>staff search</label><br><input type="text" name="staffSearch" value="{{ request.args.get('staffSearch', '') }}"></div>
+            <div style="align-self:end;"><button type="submit">search</button></div>
+        </form>
+    </div>
+
+    <div class="section">
+        <h2>manage treks</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>id</th>
+                    <th>details</th>
+                    <th>assignment</th>
+                    <th>actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trek in treks %}
+                <tr>
+                    <td>{{ trek.id }}</td>
+                    <td>
+                        <form method="post" action="/admin/treks/{{ trek.id }}/edit">
+                            <div class="grid">
+                                <div><label>name</label><br><input type="text" name="trek_name" value="{{ trek.trek_name }}"></div>
+                                <div><label>difficulty</label><br><input type="text" name="difficulty" value="{{ trek.difficulty }}"></div>
+                                <div><label>duration</label><br><input type="number" name="duration" value="{{ trek.duration }}"></div>
+                                <div><label>slots</label><br><input type="number" name="available_slots" value="{{ trek.available_slots }}"></div>
+                                <div><label>location</label><br><input type="text" name="location" value="{{ trek.location or '' }}"></div>
+                                <div><label>status</label><br><input type="text" name="status" value="{{ trek.status }}"></div>
+                                <div><label>start date</label><br><input type="date" name="start_date" value="{{ trek.start_date or '' }}"></div>
+                                <div><label>end date</label><br><input type="date" name="end_date" value="{{ trek.end_date or '' }}"></div>
+                            </div>
+                            <p><label>description</label><br><textarea name="description">{{ trek.description or '' }}</textarea></p>
+                            <button type="submit">update</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form method="post" action="/admin/treks/{{ trek.id }}/assign">
+                            <label>staff</label><br>
+                            <select name="assigned_staff_id">
+                                <option value="">none</option>
+                                {% for member in staff %}
+                                    {% if member.approval_status == 'approved' and member.status == 'active' %}
+                                        <option value="{{ member.id }}" {% if trek.assigned_staff_id == member.id %}selected{% endif %}>{{ member.name }} ({{ member.id }})</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <br><br>
+                            <button type="submit">assign</button>
+                        </form>
+                        <p>current: {{ trek.staff_name or 'none' }}</p>
+                    </td>
+                    <td>
+                        <form method="post" action="/admin/treks/{{ trek.id }}/delete" onsubmit="return confirm('remove this trek?');">
+                            <button type="submit">remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>manage users</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>id</th>
+                    <th>name</th>
+                    <th>email</th>
+                    <th>role</th>
+                    <th>status</th>
+                    <th>action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.id }}</td>
+                    <td>{{ user.name }}</td>
+                    <td>{{ user.email }}</td>
+                    <td>{{ user.role }}</td>
+                    <td>{{ user.status }}</td>
+                    <td>
+                        {% if user.role != 'admin' %}
+                        <form method="post" action="/admin/users/{{ user.id }}/toggle">
+                            <button type="submit">{% if user.status == 'active' %}blacklist{% else %}activate{% endif %}</button>
+                        </form>
+                        {% else %}
+                        admin
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>manage staff</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>id</th>
+                    <th>name</th>
+                    <th>email</th>
+                    <th>approval</th>
+                    <th>status</th>
+                    <th>assigned trek</th>
+                    <th>actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for member in staff %}
+                <tr>
+                    <td>{{ member.id }}</td>
+                    <td>{{ member.name }}</td>
+                    <td>{{ member.email }}</td>
+                    <td>{{ member.approval_status or 'pending' }}</td>
+                    <td>{{ member.status }}</td>
+                    <td>{{ member.assigned_trek_name or 'none' }}</td>
+                    <td>
+                        <div class="row-actions">
+                            {% if member.approval_status != 'approved' %}
+                            <form method="post" action="/admin/staff/{{ member.id }}/approve">
+                                <button type="submit">approve</button>
+                            </form>
+                            {% endif %}
+                            <form method="post" action="/admin/staff/{{ member.id }}/blacklist">
+                                <button type="submit">blacklist</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>booking records</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>id</th>
+                    <th>user</th>
+                    <th>trek</th>
+                    <th>booking status</th>
+                    <th>payment status</th>
+                    <th>booking date</th>
+                    <th>completed date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                <tr>
+                    <td>{{ booking.id }}</td>
+                    <td>{{ booking.user_name }}</td>
+                    <td>{{ booking.trek_name }}</td>
+                    <td>{{ booking.booking_status }}</td>
+                    <td>{{ booking.payment_status }}</td>
+                    <td>{{ booking.booking_date }}</td>
+                    <td>{{ booking.completed_date or 'none' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </body>
 </html>
