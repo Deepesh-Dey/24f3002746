@@ -243,6 +243,86 @@ def fetchBookings():
 	return bookings
 
 
+def fetchAssignedTreks(staffId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute(
+		"""
+		SELECT t.*, COUNT(b.id) AS participant_count
+		FROM treks t
+		LEFT JOIN bookings b ON b.trek_id = t.id AND b.booking_status != 'Cancelled'
+		WHERE t.assigned_staff_id = ?
+		GROUP BY t.id
+		ORDER BY t.id DESC
+		""",
+		(staffId,),
+	)
+	treks = cursor.fetchall()
+	connection.close()
+	return treks
+
+
+def fetchTrekParticipants(trekId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute(
+		"""
+		SELECT b.id AS booking_id, b.booking_status, b.booking_date, u.name, u.email
+		FROM bookings b
+		LEFT JOIN users u ON u.id = b.user_id
+		WHERE b.trek_id = ?
+		ORDER BY b.id DESC
+		""",
+		(trekId,),
+	)
+	participants = cursor.fetchall()
+	connection.close()
+	return participants
+
+
+def updateStaffProfile(userId, formData):
+	contact = formData.get("contact", "").strip()
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("UPDATE staff_profile SET contact = ? WHERE user_id = ?", (contact, userId))
+	connection.commit()
+	connection.close()
+
+
+def getStaffOwnedTrek(trekId, staffId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("SELECT * FROM treks WHERE id = ? AND assigned_staff_id = ? LIMIT 1", (trekId, staffId))
+	trek = cursor.fetchone()
+	connection.close()
+	return trek
+
+
+def updateStaffTrek(trekId, staffId, formData):
+	trek = getStaffOwnedTrek(trekId, staffId)
+	if trek is None:
+		return False
+
+	availableSlots = formData.get("available_slots", str(trek["available_slots"])).strip() or str(trek["available_slots"])
+	status = formData.get("status", trek["status"]).strip() or trek["status"]
+	startDate = formData.get("start_date", trek["start_date"] or "").strip()
+	endDate = formData.get("end_date", trek["end_date"] or "").strip()
+	description = formData.get("description", trek["description"] or "").strip()
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute(
+		"""
+		UPDATE treks
+		SET available_slots = ?, status = ?, start_date = ?, end_date = ?, description = ?
+		WHERE id = ? AND assigned_staff_id = ?
+		""",
+		(int(availableSlots), status, startDate, endDate, description, trekId, staffId),
+	)
+	connection.commit()
+	connection.close()
+	return True
+
+
 def saveTrek(formData, trekId=None):
 	trekName = formData.get("trek_name", "").strip()
 	difficulty = formData.get("difficulty", "").strip()
@@ -594,7 +674,69 @@ def blacklistStaff(userId):
 @loginRequired
 @roleRequired("staff")
 def staffDashboard():
-	return render_template("staff_dashboard.html")
+	currentUser = getCurrentUser()
+	profile = getStaffProfile(currentUser["id"])
+	treks = fetchAssignedTreks(currentUser["id"])
+	selectedTrekId = request.args.get("trekId")
+	selectedTrek = None
+	participants = []
+	if selectedTrekId:
+		selectedTrek = getStaffOwnedTrek(int(selectedTrekId), currentUser["id"])
+		if selectedTrek is not None:
+			participants = fetchTrekParticipants(selectedTrek["id"])
+
+	return render_template(
+		"staff_dashboard.html",
+		currentUser=currentUser,
+		profile=profile,
+		treks=treks,
+		selectedTrek=selectedTrek,
+		participants=participants,
+	)
+
+
+@app.route("/staff/profile/update", methods=["POST"])
+@loginRequired
+@roleRequired("staff")
+def updateStaffProfileRoute():
+	currentUser = getCurrentUser()
+	updateStaffProfile(currentUser["id"], request.form)
+	flash("profile updated")
+	return redirect(url_for("staffDashboard"))
+
+
+@app.route("/staff/treks/<int:trekId>/update", methods=["POST"])
+@loginRequired
+@roleRequired("staff")
+def updateStaffTrekRoute(trekId):
+	currentUser = getCurrentUser()
+	if not updateStaffTrek(trekId, currentUser["id"], request.form):
+		flash("only assigned staff can manage this trek")
+		return redirect(url_for("staffDashboard"))
+
+	flash("trek updated")
+	return redirect(url_for("staffDashboard", trekId=trekId))
+
+
+@app.route("/staff/treks/<int:trekId>")
+@loginRequired
+@roleRequired("staff")
+def viewStaffTrek(trekId):
+	currentUser = getCurrentUser()
+	trek = getStaffOwnedTrek(trekId, currentUser["id"])
+	if trek is None:
+		flash("only assigned staff can manage this trek")
+		return redirect(url_for("staffDashboard"))
+
+	participants = fetchTrekParticipants(trekId)
+	return render_template(
+		"staff_dashboard.html",
+		currentUser=currentUser,
+		profile=getStaffProfile(currentUser["id"]),
+		treks=fetchAssignedTreks(currentUser["id"]),
+		selectedTrek=trek,
+		participants=participants,
+	)
 
 
 @app.route("/user")
