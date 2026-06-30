@@ -323,6 +323,120 @@ def updateStaffTrek(trekId, staffId, formData):
 	return True
 
 
+def fetchOpenTreks(difficulty=None, location=None):
+	connection = getConnection()
+	cursor = connection.cursor()
+	difficultyPattern = buildSearchPattern(difficulty)
+	locationPattern = buildSearchPattern(location)
+
+	query = "SELECT * FROM treks WHERE status = 'Open' AND available_slots > 0"
+	params = []
+
+	if difficultyPattern:
+		query += " AND difficulty LIKE ?"
+		params.append(difficultyPattern)
+
+	if locationPattern:
+		query += " AND location LIKE ?"
+		params.append(locationPattern)
+
+	query += " ORDER BY id DESC"
+	cursor.execute(query, params)
+	treks = cursor.fetchall()
+	connection.close()
+	return treks
+
+
+def fetchUserBookings(userId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute(
+		"""
+		SELECT b.*, t.trek_name, t.location, t.difficulty, t.status AS trek_status
+		FROM bookings b
+		LEFT JOIN treks t ON t.id = b.trek_id
+		WHERE b.user_id = ?
+		ORDER BY b.id DESC
+		""",
+		(userId,),
+	)
+	bookings = cursor.fetchall()
+	connection.close()
+	return bookings
+
+
+def hasActiveBooking(userId, trekId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute(
+		"SELECT id FROM bookings WHERE user_id = ? AND trek_id = ? AND booking_status = 'Booked' LIMIT 1",
+		(userId, trekId),
+	)
+	row = cursor.fetchone()
+	connection.close()
+	return row is not None
+
+
+def bookTrek(userId, trekId):
+	trek = getTrekById(trekId)
+
+	# guard against closed treks, full treks and duplicate bookings
+	if trek is None:
+		return "trek not found"
+	if trek["status"] != "Open":
+		return "trek is not open for booking"
+	if trek["available_slots"] <= 0:
+		return "no slots available for this trek"
+	if hasActiveBooking(userId, trekId):
+		return "you already booked this trek"
+
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute(
+		"INSERT INTO bookings (user_id, trek_id, booking_status, payment_status) VALUES (?, ?, ?, ?)",
+		(userId, trekId, "Booked", "Pending"),
+	)
+	cursor.execute("UPDATE treks SET available_slots = available_slots - 1 WHERE id = ?", (trekId,))
+	connection.commit()
+	connection.close()
+	return None
+
+
+def cancelBooking(bookingId, userId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("SELECT * FROM bookings WHERE id = ? AND user_id = ? LIMIT 1", (bookingId, userId))
+	booking = cursor.fetchone()
+
+	if booking is None or booking["booking_status"] != "Booked":
+		connection.close()
+		return False
+
+	cursor.execute("UPDATE bookings SET booking_status = 'Cancelled' WHERE id = ?", (bookingId,))
+	cursor.execute("UPDATE treks SET available_slots = available_slots + 1 WHERE id = ?", (booking["trek_id"],))
+	connection.commit()
+	connection.close()
+	return True
+
+
+def updateUserProfile(userId, formData):
+	name = formData.get("name", "").strip()
+	newPassword = formData.get("new_password", "").strip()
+
+	connection = getConnection()
+	cursor = connection.cursor()
+
+	if name:
+		cursor.execute("UPDATE users SET name = ? WHERE id = ?", (name, userId))
+
+	# only touch the password if the user actually typed a new one
+	if newPassword:
+		cursor.execute("UPDATE users SET password = ? WHERE id = ?", (generate_password_hash(newPassword), userId))
+
+	connection.commit()
+	connection.close()
+
+
 def saveTrek(formData, trekId=None):
 	trekName = formData.get("trek_name", "").strip()
 	difficulty = formData.get("difficulty", "").strip()
@@ -743,7 +857,59 @@ def viewStaffTrek(trekId):
 @loginRequired
 @roleRequired("trekker")
 def userDashboard():
-	return render_template("user_dashboard.html")
+	currentUser = getCurrentUser()
+	difficulty = request.args.get("difficulty", "")
+	location = request.args.get("location", "")
+	openTreks = fetchOpenTreks(difficulty, location)
+	myBookings = fetchUserBookings(currentUser["id"])
+
+	# used by the template to hide the book button for treks already booked
+	activeTrekIds = [booking["trek_id"] for booking in myBookings if booking["booking_status"] == "Booked"]
+
+	return render_template(
+		"user_dashboard.html",
+		currentUser=currentUser,
+		openTreks=openTreks,
+		myBookings=myBookings,
+		activeTrekIds=activeTrekIds,
+		difficulty=difficulty,
+		location=location,
+	)
+
+
+@app.route("/user/profile/update", methods=["POST"])
+@loginRequired
+@roleRequired("trekker")
+def updateUserProfileRoute():
+	currentUser = getCurrentUser()
+	updateUserProfile(currentUser["id"], request.form)
+	flash("profile updated")
+	return redirect(url_for("userDashboard"))
+
+
+@app.route("/user/treks/<int:trekId>/book", methods=["POST"])
+@loginRequired
+@roleRequired("trekker")
+def bookTrekRoute(trekId):
+	currentUser = getCurrentUser()
+	error = bookTrek(currentUser["id"], trekId)
+	if error:
+		flash(error)
+	else:
+		flash("trek booked")
+	return redirect(url_for("userDashboard"))
+
+
+@app.route("/user/bookings/<int:bookingId>/cancel", methods=["POST"])
+@loginRequired
+@roleRequired("trekker")
+def cancelBookingRoute(bookingId):
+	currentUser = getCurrentUser()
+	if cancelBooking(bookingId, currentUser["id"]):
+		flash("booking cancelled")
+	else:
+		flash("booking not found or already cancelled")
+	return redirect(url_for("userDashboard"))
 
 
 if __name__ == "__main__":
