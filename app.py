@@ -267,7 +267,7 @@ def fetchTrekParticipants(trekId):
 	cursor = connection.cursor()
 	cursor.execute(
 		"""
-		SELECT b.id AS booking_id, b.booking_status, b.booking_date, u.name, u.email
+		SELECT b.id AS booking_id, b.booking_status, b.booking_date, b.completed_date, u.name, u.email
 		FROM bookings b
 		LEFT JOIN users u ON u.id = b.user_id
 		WHERE b.trek_id = ?
@@ -320,7 +320,27 @@ def updateStaffTrek(trekId, staffId, formData):
 	)
 	connection.commit()
 	connection.close()
+
+	# once staff marks the trek completed, close out the bookings too
+	if status == "Completed":
+		completeTrekBookings(trekId)
+
 	return True
+
+
+def completeTrekBookings(trekId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute(
+		"""
+		UPDATE bookings
+		SET booking_status = 'Completed', completed_date = CURRENT_TIMESTAMP
+		WHERE trek_id = ? AND booking_status = 'Booked'
+		""",
+		(trekId,),
+	)
+	connection.commit()
+	connection.close()
 
 
 def fetchOpenTreks(difficulty=None, location=None):
@@ -499,6 +519,10 @@ def saveTrek(formData, trekId=None):
 
 	connection.commit()
 	connection.close()
+
+	# admin can also close out a trek directly, so complete its bookings too
+	if trekId is not None and status == "Completed":
+		completeTrekBookings(trekId)
 
 
 def setUserStatus(userId, status):

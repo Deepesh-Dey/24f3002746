@@ -186,6 +186,7 @@
                         <th>email</th>
                         <th>booking status</th>
                         <th>booking date</th>
+                        <th>completed date</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -196,6 +197,7 @@
                         <td>{{ person.email }}</td>
                         <td>{{ person.booking_status }}</td>
                         <td>{{ person.booking_date }}</td>
+                        <td>{{ person.completed_date or 'none' }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
