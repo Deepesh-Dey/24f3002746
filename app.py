@@ -2,7 +2,7 @@ import sqlite3
 from pathlib import Path
 from functools import wraps
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -241,6 +241,25 @@ def fetchBookings():
 	bookings = cursor.fetchall()
 	connection.close()
 	return bookings
+
+
+def getBookingById(bookingId):
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute(
+		"""
+		SELECT b.*, u.name AS user_name, t.trek_name AS trek_name
+		FROM bookings b
+		LEFT JOIN users u ON u.id = b.user_id
+		LEFT JOIN treks t ON t.id = b.trek_id
+		WHERE b.id = ?
+		LIMIT 1
+		""",
+		(bookingId,),
+	)
+	booking = cursor.fetchone()
+	connection.close()
+	return booking
 
 
 def fetchAssignedTreks(staffId):
@@ -517,12 +536,15 @@ def saveTrek(formData, trekId=None):
 			),
 		)
 
+	newTrekId = trekId if trekId is not None else cursor.lastrowid
 	connection.commit()
 	connection.close()
 
 	# admin can also close out a trek directly, so complete its bookings too
 	if trekId is not None and status == "Completed":
 		completeTrekBookings(trekId)
+
+	return newTrekId
 
 
 def setUserStatus(userId, status):
@@ -578,6 +600,29 @@ def roleRequired(*roles):
 		return wrapper
 
 	return decorator
+
+
+# same checks as loginRequired/roleRequired above, but the api gives back json instead of redirects
+def apiRoleRequired(*roles):
+	def decorator(viewFunc):
+		@wraps(viewFunc)
+		def wrapper(*args, **kwargs):
+			user = getCurrentUser()
+			if user is None or user["status"] != "active":
+				return jsonify({"error": "login required"}), 401
+
+			if user["role"] not in roles:
+				return jsonify({"error": "not allowed for this role"}), 403
+
+			return viewFunc(*args, **kwargs)
+
+		return wrapper
+
+	return decorator
+
+
+def rowsToList(rows):
+	return [dict(row) for row in rows]
 
 
 def initDatabase():
@@ -934,6 +979,143 @@ def cancelBookingRoute(bookingId):
 	else:
 		flash("booking not found or already cancelled")
 	return redirect(url_for("userDashboard"))
+
+
+# ---- json api below, same session login as the normal site, just json responses instead of pages ----
+
+@app.route("/api/treks", methods=["GET"])
+@apiRoleRequired("admin")
+def apiListTreks():
+	treks = fetchTreks(request.args.get("search"))
+	return jsonify(rowsToList(treks))
+
+
+@app.route("/api/treks", methods=["POST"])
+@apiRoleRequired("admin")
+def apiCreateTrek():
+	data = request.get_json(silent=True) or {}
+	try:
+		newTrekId = saveTrek(data)
+	except (ValueError, TypeError):
+		return jsonify({"error": "invalid trek data"}), 400
+	return jsonify(dict(getTrekById(newTrekId))), 201
+
+
+@app.route("/api/treks/<int:trekId>", methods=["GET"])
+@apiRoleRequired("admin")
+def apiGetTrek(trekId):
+	trek = getTrekById(trekId)
+	if trek is None:
+		return jsonify({"error": "trek not found"}), 404
+	return jsonify(dict(trek))
+
+
+@app.route("/api/treks/<int:trekId>", methods=["PUT"])
+@apiRoleRequired("admin")
+def apiUpdateTrek(trekId):
+	if getTrekById(trekId) is None:
+		return jsonify({"error": "trek not found"}), 404
+
+	data = request.get_json(silent=True) or {}
+	try:
+		saveTrek(data, trekId)
+	except (ValueError, TypeError):
+		return jsonify({"error": "invalid trek data"}), 400
+	return jsonify(dict(getTrekById(trekId)))
+
+
+@app.route("/api/treks/<int:trekId>", methods=["DELETE"])
+@apiRoleRequired("admin")
+def apiDeleteTrek(trekId):
+	if getTrekById(trekId) is None:
+		return jsonify({"error": "trek not found"}), 404
+
+	connection = getConnection()
+	cursor = connection.cursor()
+	cursor.execute("DELETE FROM treks WHERE id = ?", (trekId,))
+	connection.commit()
+	connection.close()
+	return jsonify({"message": "trek deleted"})
+
+
+@app.route("/api/users", methods=["GET"])
+@apiRoleRequired("admin")
+def apiListUsers():
+	users = fetchUsers(request.args.get("search"))
+	return jsonify(rowsToList(users))
+
+
+@app.route("/api/users/<int:userId>", methods=["GET"])
+@apiRoleRequired("admin")
+def apiGetUser(userId):
+	user = getUserById(userId)
+	if user is None:
+		return jsonify({"error": "user not found"}), 404
+	return jsonify(dict(user))
+
+
+@app.route("/api/users/<int:userId>/status", methods=["PUT"])
+@apiRoleRequired("admin")
+def apiUpdateUserStatus(userId):
+	user = getUserById(userId)
+	if user is None:
+		return jsonify({"error": "user not found"}), 404
+
+	data = request.get_json(silent=True) or {}
+	newStatus = data.get("status", "").strip()
+	if newStatus not in ["active", "blacklisted"]:
+		return jsonify({"error": "status must be active or blacklisted"}), 400
+
+	setUserStatus(userId, newStatus)
+	return jsonify(dict(getUserById(userId)))
+
+
+@app.route("/api/bookings", methods=["GET"])
+@apiRoleRequired("admin", "trekker")
+def apiListBookings():
+	currentUser = getCurrentUser()
+	if currentUser["role"] == "admin":
+		bookings = fetchBookings()
+	else:
+		bookings = fetchUserBookings(currentUser["id"])
+	return jsonify(rowsToList(bookings))
+
+
+@app.route("/api/bookings/<int:bookingId>", methods=["GET"])
+@apiRoleRequired("admin", "trekker")
+def apiGetBooking(bookingId):
+	currentUser = getCurrentUser()
+	booking = getBookingById(bookingId)
+	if booking is None:
+		return jsonify({"error": "booking not found"}), 404
+	if currentUser["role"] == "trekker" and booking["user_id"] != currentUser["id"]:
+		return jsonify({"error": "not allowed"}), 403
+	return jsonify(dict(booking))
+
+
+@app.route("/api/bookings", methods=["POST"])
+@apiRoleRequired("trekker")
+def apiCreateBooking():
+	currentUser = getCurrentUser()
+	data = request.get_json(silent=True) or {}
+	try:
+		trekId = int(data.get("trek_id"))
+	except (TypeError, ValueError):
+		return jsonify({"error": "trek_id must be a number"}), 400
+
+	error = bookTrek(currentUser["id"], trekId)
+	if error:
+		return jsonify({"error": error}), 400
+	return jsonify({"message": "trek booked"}), 201
+
+
+@app.route("/api/bookings/<int:bookingId>/cancel", methods=["PUT"])
+@apiRoleRequired("trekker")
+def apiCancelBooking(bookingId):
+	currentUser = getCurrentUser()
+	if cancelBooking(bookingId, currentUser["id"]):
+		return jsonify({"message": "booking cancelled"})
+	return jsonify({"error": "booking not found or already cancelled"}), 400
 
 
 if __name__ == "__main__":
