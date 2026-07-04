@@ -82,6 +82,36 @@
             margin-bottom: 12px;
         }
 
+        .chart-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .chart-label {
+            width: 160px;
+        }
+
+        .chart-track {
+            flex: 1;
+            background: whitesmoke;
+            border: 1px solid gray;
+            border-radius: 4px;
+            height: 22px;
+            overflow: hidden;
+        }
+
+        .chart-fill {
+            height: 100%;
+            background: blue;
+        }
+
+        .chart-value {
+            width: 40px;
+            text-align: right;
+        }
+
         a {
             color: blue;
         }
@@ -108,6 +138,21 @@
         <div class="stat">total trekkers<strong>{{ treks | sum(attribute='participant_count') if treks else 0 }}</strong></div>
         <div class="stat">current trek<strong>{{ selectedTrek.trek_name if selectedTrek else 'none' }}</strong></div>
         <div class="stat">assigned staff id<strong>{{ currentUser.id }}</strong></div>
+    </div>
+
+    <div class="section">
+        <h2>participants per trek</h2>
+        {% if chartBars %}
+            {% for bar in chartBars %}
+            <div class="chart-row">
+                <div class="chart-label">{{ bar.label }}</div>
+                <div class="chart-track"><div class="chart-fill" style="width: {{ bar.pct }}%;"></div></div>
+                <div class="chart-value">{{ bar.value }}</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>no assigned treks yet.</p>
+        {% endif %}
     </div>
 
     <div class="section">

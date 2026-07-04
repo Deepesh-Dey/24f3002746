@@ -139,13 +139,34 @@ def fetchStats():
 	staffCount = cursor.fetchone()[0]
 	cursor.execute("SELECT COUNT(*) FROM bookings")
 	bookingCount = cursor.fetchone()[0]
+	cursor.execute("SELECT COUNT(*) FROM users WHERE status = 'active'")
+	activeUserCount = cursor.fetchone()[0]
 	connection.close()
 	return {
 		"trekCount": trekCount,
 		"userCount": userCount,
 		"staffCount": staffCount,
 		"bookingCount": bookingCount,
+		"activeUserCount": activeUserCount,
 	}
+
+
+def buildChartBars(dataPairs):
+	# turns a list of (label, value) pairs into bars sized relative to the biggest value
+	maxValue = max((value for _, value in dataPairs), default=0)
+	bars = []
+	for label, value in dataPairs:
+		pct = int((value / maxValue) * 100) if maxValue > 0 else 0
+		bars.append({"label": label, "value": value, "pct": pct})
+	return bars
+
+
+def countBookingStatuses(bookings):
+	counts = {"Booked": 0, "Cancelled": 0, "Completed": 0}
+	for booking in bookings:
+		if booking["booking_status"] in counts:
+			counts[booking["booking_status"]] += 1
+	return counts
 
 
 def fetchTreks(searchText=None):
@@ -761,6 +782,11 @@ def adminDashboard():
 	users = fetchUsers(request.args.get("userSearch"))
 	staff = fetchStaff(request.args.get("staffSearch"))
 	bookings = fetchBookings()
+	chartBars = buildChartBars([
+		("total treks", stats["trekCount"]),
+		("total bookings", stats["bookingCount"]),
+		("active users", stats["activeUserCount"]),
+	])
 	return render_template(
 		"admin_dashboard.html",
 		stats=stats,
@@ -768,6 +794,7 @@ def adminDashboard():
 		users=users,
 		staff=staff,
 		bookings=bookings,
+		chartBars=chartBars,
 		currentUser=getCurrentUser(),
 	)
 
@@ -868,6 +895,8 @@ def staffDashboard():
 		if selectedTrek is not None:
 			participants = fetchTrekParticipants(selectedTrek["id"])
 
+	chartBars = buildChartBars([(trek["trek_name"], trek["participant_count"]) for trek in treks])
+
 	return render_template(
 		"staff_dashboard.html",
 		currentUser=currentUser,
@@ -875,6 +904,7 @@ def staffDashboard():
 		treks=treks,
 		selectedTrek=selectedTrek,
 		participants=participants,
+		chartBars=chartBars,
 	)
 
 
@@ -912,13 +942,15 @@ def viewStaffTrek(trekId):
 		return redirect(url_for("staffDashboard"))
 
 	participants = fetchTrekParticipants(trekId)
+	staffTreks = fetchAssignedTreks(currentUser["id"])
 	return render_template(
 		"staff_dashboard.html",
 		currentUser=currentUser,
 		profile=getStaffProfile(currentUser["id"]),
-		treks=fetchAssignedTreks(currentUser["id"]),
+		treks=staffTreks,
 		selectedTrek=trek,
 		participants=participants,
+		chartBars=buildChartBars([(t["trek_name"], t["participant_count"]) for t in staffTreks]),
 	)
 
 
@@ -935,6 +967,9 @@ def userDashboard():
 	# used by the template to hide the book button for treks already booked
 	activeTrekIds = [booking["trek_id"] for booking in myBookings if booking["booking_status"] == "Booked"]
 
+	statusCounts = countBookingStatuses(myBookings)
+	chartBars = buildChartBars(list(statusCounts.items()))
+
 	return render_template(
 		"user_dashboard.html",
 		currentUser=currentUser,
@@ -943,6 +978,7 @@ def userDashboard():
 		activeTrekIds=activeTrekIds,
 		difficulty=difficulty,
 		location=location,
+		chartBars=chartBars,
 	)
 
 
