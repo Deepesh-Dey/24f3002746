@@ -497,6 +497,54 @@ def updateUserProfile(userId, formData):
 	connection.close()
 
 
+ALLOWED_TREK_STATUSES = ["Pending", "Open", "Closed", "Started", "Ongoing", "Completed"]
+
+
+def validateTrekForm(formData):
+	# used by the admin add/edit trek forms before saveTrek touches the db
+	errors = []
+	trekName = formData.get("trek_name", "").strip()
+	difficulty = formData.get("difficulty", "").strip()
+	duration = formData.get("duration", "").strip()
+	availableSlots = formData.get("available_slots", "").strip()
+	status = formData.get("status", "").strip()
+	startDate = formData.get("start_date", "").strip()
+	endDate = formData.get("end_date", "").strip()
+
+	if not trekName:
+		errors.append("trek name is required")
+	if not difficulty:
+		errors.append("difficulty is required")
+	if not duration.isdigit() or int(duration) <= 0:
+		errors.append("duration must be a positive number")
+	if not availableSlots.isdigit():
+		errors.append("available slots must be a number")
+	if status and status not in ALLOWED_TREK_STATUSES:
+		errors.append("invalid trek status")
+	if startDate and endDate and startDate > endDate:
+		errors.append("start date must be before end date")
+
+	return errors
+
+
+def validateStaffTrekForm(formData):
+	# used by the staff trek update form, which only touches slots/status/dates
+	errors = []
+	availableSlots = formData.get("available_slots", "").strip()
+	status = formData.get("status", "").strip()
+	startDate = formData.get("start_date", "").strip()
+	endDate = formData.get("end_date", "").strip()
+
+	if not availableSlots.isdigit():
+		errors.append("available slots must be a number")
+	if status not in ALLOWED_TREK_STATUSES:
+		errors.append("invalid trek status")
+	if startDate and endDate and startDate > endDate:
+		errors.append("start date must be before end date")
+
+	return errors
+
+
 def saveTrek(formData, trekId=None):
 	trekName = formData.get("trek_name", "").strip()
 	difficulty = formData.get("difficulty", "").strip()
@@ -708,6 +756,14 @@ def register():
 			flash("fill all the fields")
 			return render_template("register.html")
 
+		if "@" not in email:
+			flash("enter a valid email")
+			return render_template("register.html")
+
+		if len(password) < 6:
+			flash("password must be at least 6 characters")
+			return render_template("register.html")
+
 		if getUserByEmail(email) is not None:
 			flash("email already used")
 			return render_template("register.html")
@@ -803,6 +859,12 @@ def adminDashboard():
 @loginRequired
 @roleRequired("admin")
 def addTrek():
+	errors = validateTrekForm(request.form)
+	if errors:
+		for message in errors:
+			flash(message)
+		return redirect(url_for("adminDashboard"))
+
 	saveTrek(request.form)
 	flash("trek saved")
 	return redirect(url_for("adminDashboard"))
@@ -812,6 +874,12 @@ def addTrek():
 @loginRequired
 @roleRequired("admin")
 def editTrek(trekId):
+	errors = validateTrekForm(request.form)
+	if errors:
+		for message in errors:
+			flash(message)
+		return redirect(url_for("adminDashboard"))
+
 	saveTrek(request.form, trekId)
 	flash("trek updated")
 	return redirect(url_for("adminDashboard"))
@@ -923,6 +991,12 @@ def updateStaffProfileRoute():
 @roleRequired("staff")
 def updateStaffTrekRoute(trekId):
 	currentUser = getCurrentUser()
+	errors = validateStaffTrekForm(request.form)
+	if errors:
+		for message in errors:
+			flash(message)
+		return redirect(url_for("staffDashboard", trekId=trekId))
+
 	if not updateStaffTrek(trekId, currentUser["id"], request.form):
 		flash("only assigned staff can manage this trek")
 		return redirect(url_for("staffDashboard"))
@@ -987,6 +1061,17 @@ def userDashboard():
 @roleRequired("trekker")
 def updateUserProfileRoute():
 	currentUser = getCurrentUser()
+	name = request.form.get("name", "").strip()
+	newPassword = request.form.get("new_password", "").strip()
+
+	if not name:
+		flash("name is required")
+		return redirect(url_for("userDashboard"))
+
+	if newPassword and len(newPassword) < 6:
+		flash("password must be at least 6 characters")
+		return redirect(url_for("userDashboard"))
+
 	updateUserProfile(currentUser["id"], request.form)
 	flash("profile updated")
 	return redirect(url_for("userDashboard"))

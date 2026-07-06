@@ -159,7 +159,17 @@
                 <div><label>duration</label><br><input type="number" name="duration" min="1" required></div>
                 <div><label>available slots</label><br><input type="number" name="available_slots" min="0" value="0" required></div>
                 <div><label>location</label><br><input type="text" name="location"></div>
-                <div><label>status</label><br><input type="text" name="status" value="Pending"></div>
+                <div>
+                    <label>status</label><br>
+                    <select name="status">
+                        <option value="Pending">Pending</option>
+                        <option value="Open">Open</option>
+                        <option value="Closed">Closed</option>
+                        <option value="Started">Started</option>
+                        <option value="Ongoing">Ongoing</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
                 <div><label>start date</label><br><input type="date" name="start_date"></div>
                 <div><label>end date</label><br><input type="date" name="end_date"></div>
                 <div>
@@ -207,12 +217,19 @@
                     <td>
                         <form method="post" action="/admin/treks/{{ trek.id }}/edit">
                             <div class="grid">
-                                <div><label>name</label><br><input type="text" name="trek_name" value="{{ trek.trek_name }}"></div>
-                                <div><label>difficulty</label><br><input type="text" name="difficulty" value="{{ trek.difficulty }}"></div>
-                                <div><label>duration</label><br><input type="number" name="duration" value="{{ trek.duration }}"></div>
-                                <div><label>slots</label><br><input type="number" name="available_slots" value="{{ trek.available_slots }}"></div>
+                                <div><label>name</label><br><input type="text" name="trek_name" value="{{ trek.trek_name }}" required></div>
+                                <div><label>difficulty</label><br><input type="text" name="difficulty" value="{{ trek.difficulty }}" required></div>
+                                <div><label>duration</label><br><input type="number" name="duration" value="{{ trek.duration }}" min="1" required></div>
+                                <div><label>slots</label><br><input type="number" name="available_slots" value="{{ trek.available_slots }}" min="0" required></div>
                                 <div><label>location</label><br><input type="text" name="location" value="{{ trek.location or '' }}"></div>
-                                <div><label>status</label><br><input type="text" name="status" value="{{ trek.status }}"></div>
+                                <div>
+                                    <label>status</label><br>
+                                    <select name="status">
+                                        {% for statusOption in ["Pending", "Open", "Closed", "Started", "Ongoing", "Completed"] %}
+                                            <option value="{{ statusOption }}" {% if trek.status == statusOption %}selected{% endif %}>{{ statusOption }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                                 <div><label>start date</label><br><input type="date" name="start_date" value="{{ trek.start_date or '' }}"></div>
                                 <div><label>end date</label><br><input type="date" name="end_date" value="{{ trek.end_date or '' }}"></div>
                             </div>

@@ -204,7 +204,7 @@
                                     <option value="Ongoing" {% if trek.status == 'Ongoing' %}selected{% endif %}>Ongoing</option>
                                     <option value="Completed" {% if trek.status == 'Completed' %}selected{% endif %}>Completed</option>
                                 </select>
-                                <input type="number" name="available_slots" value="{{ trek.available_slots }}" min="0">
+                                <input type="number" name="available_slots" value="{{ trek.available_slots }}" min="0" required>
                                 <input type="date" name="start_date" value="{{ trek.start_date or '' }}">
                                 <input type="date" name="end_date" value="{{ trek.end_date or '' }}">
                                 <br>

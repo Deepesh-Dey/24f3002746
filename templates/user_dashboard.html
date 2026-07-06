@@ -148,9 +148,9 @@
     <div class="section">
         <h2>update profile</h2>
         <form method="post" action="/user/profile/update" class="grid">
-            <div><label>name</label><br><input type="text" name="name" value="{{ currentUser.name }}"></div>
+            <div><label>name</label><br><input type="text" name="name" value="{{ currentUser.name }}" required></div>
             <div><label>email</label><br><input type="text" value="{{ currentUser.email }}" disabled></div>
-            <div><label>new password</label><br><input type="password" name="new_password" placeholder="leave blank to keep current"></div>
+            <div><label>new password</label><br><input type="password" name="new_password" minlength="6" placeholder="leave blank to keep current"></div>
             <div style="align-self:end;"><button type="submit">update profile</button></div>
         </form>
     </div>
