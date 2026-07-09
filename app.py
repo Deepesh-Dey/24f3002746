@@ -2,7 +2,8 @@ import sqlite3
 from pathlib import Path
 from functools import wraps
 
-from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import LoginManager, UserMixin, current_user, login_required, login_user, logout_user
 from werkzeug.security import check_password_hash, generate_password_hash
 
 
@@ -11,6 +12,10 @@ DB_PATH = BASE_DIR / "adventurehub.db"
 
 app = Flask(__name__)
 app.secret_key = "adventurehub-secret"
+
+loginManager = LoginManager()
+loginManager.login_view = "login"
+loginManager.init_app(app)
 
 
 def getConnection():
@@ -96,6 +101,28 @@ def getUserById(userId):
 	return user
 
 
+# wraps a users row so flask-login can track it in the session
+class User(UserMixin):
+	def __init__(self, row):
+		self.id = row["id"]
+		self.name = row["name"]
+		self.email = row["email"]
+		self.role = row["role"]
+		self.status = row["status"]
+
+	# lets the rest of the app keep using currentUser["id"] style access
+	def __getitem__(self, key):
+		return getattr(self, key)
+
+
+@loginManager.user_loader
+def loadUser(userId):
+	row = getUserById(int(userId))
+	if row is None or row["status"] != "active":
+		return None
+	return User(row)
+
+
 def getStaffProfile(userId):
 	connection = getConnection()
 	cursor = connection.cursor()
@@ -115,10 +142,9 @@ def getTrekById(trekId):
 
 
 def getCurrentUser():
-	userId = session.get("userId")
-	if userId is None:
-		return None
-	return getUserById(userId)
+	if current_user.is_authenticated:
+		return current_user
+	return None
 
 
 def buildSearchPattern(value):
@@ -640,28 +666,16 @@ def setTrekStaff(trekId, staffId):
 	connection.close()
 
 
-def loginRequired(viewFunc):
-	@wraps(viewFunc)
-	def wrapper(*args, **kwargs):
-		user = getCurrentUser()
-		if user is None or user["status"] != "active":
-			session.clear()
-			return redirect(url_for("login"))
-		return viewFunc(*args, **kwargs)
-
-	return wrapper
+# flask-login already handles the "not logged in -> back to /login" part
+loginRequired = login_required
 
 
 def roleRequired(*roles):
 	def decorator(viewFunc):
 		@wraps(viewFunc)
+		@login_required
 		def wrapper(*args, **kwargs):
-			user = getCurrentUser()
-			if user is None or user["status"] != "active":
-				session.clear()
-				return redirect(url_for("login"))
-
-			if user["role"] not in roles:
+			if current_user.role not in roles:
 				return redirect(url_for("home"))
 
 			return viewFunc(*args, **kwargs)
@@ -671,16 +685,15 @@ def roleRequired(*roles):
 	return decorator
 
 
-# same checks as loginRequired/roleRequired above, but the api gives back json instead of redirects
+# same role check as roleRequired above, but the api gives back json instead of redirects
 def apiRoleRequired(*roles):
 	def decorator(viewFunc):
 		@wraps(viewFunc)
 		def wrapper(*args, **kwargs):
-			user = getCurrentUser()
-			if user is None or user["status"] != "active":
+			if not current_user.is_authenticated:
 				return jsonify({"error": "login required"}), 401
 
-			if user["role"] not in roles:
+			if current_user.role not in roles:
 				return jsonify({"error": "not allowed for this role"}), 403
 
 			return viewFunc(*args, **kwargs)
@@ -735,14 +748,14 @@ def goToDashboard(userRole):
 
 @app.route("/")
 def home():
-	if "userId" in session:
-		return goToDashboard(session.get("role"))
+	if current_user.is_authenticated:
+		return goToDashboard(current_user.role)
 	return render_template("home.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-	if session.get("role") == "admin":
+	if current_user.is_authenticated and current_user.role == "admin":
 		return redirect(url_for("adminDashboard"))
 
 	if request.method == "POST":
@@ -816,8 +829,7 @@ def login():
 				flash("staff needs admin approval")
 				return render_template("login.html")
 
-		session["userId"] = user["id"]
-		session["role"] = user["role"]
+		login_user(User(user))
 		return goToDashboard(user["role"])
 
 	return render_template("login.html")
@@ -825,7 +837,7 @@ def login():
 
 @app.route("/logout")
 def logout():
-	session.clear()
+	logout_user()
 	return redirect(url_for("home"))
 
 
