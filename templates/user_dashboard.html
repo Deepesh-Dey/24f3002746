@@ -3,17 +3,32 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>user dashboard</title>
+    <title>User Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <div class="container py-4">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center bg-white border rounded p-3 mb-4">
-            <div>
-                <h1 class="h3 mb-1">user dashboard</h1>
-                <p class="mb-0 text-muted">welcome, {{ currentUser.name }}</p>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12 col-md-3 col-lg-2 mb-4 mb-md-0">
+                <div class="bg-white border rounded p-3">
+                    <h5 class="mb-3">AdventureHub</h5>
+                    <div class="list-group">
+                        <a href="#dashboard-top" class="list-group-item list-group-item-action">Dashboard</a>
+                        <a href="#available-treks-section" class="list-group-item list-group-item-action">Browse Treks</a>
+                        <a href="#history-section" class="list-group-item list-group-item-action">My Bookings</a>
+                        <a href="#history-section" class="list-group-item list-group-item-action">History</a>
+                        <a href="#profile-section" class="list-group-item list-group-item-action">Profile</a>
+                        <a href="/logout" class="list-group-item list-group-item-action text-danger">Logout</a>
+                    </div>
+                </div>
             </div>
-            <a href="/logout" class="btn btn-outline-secondary mt-3 mt-md-0">logout</a>
+            <div class="col-12 col-md-9 col-lg-10">
+        <div id="dashboard-top" class="d-flex flex-column flex-md-row justify-content-between align-items-md-center bg-white border rounded p-3 mb-4">
+            <div>
+                <h1 class="h3 mb-1">User Dashboard</h1>
+                <p class="mb-0 text-muted">Welcome, {{ currentUser.name }}</p>
+            </div>
+            <a href="/logout" class="btn btn-outline-secondary mt-3 mt-md-0">Logout</a>
         </div>
 
         {% with messages = get_flashed_messages() %}
@@ -28,7 +43,7 @@
             <div class="col-6 col-lg-3">
                 <div class="card h-100 text-center">
                     <div class="card-body">
-                        <p class="mb-1">open treks</p>
+                        <p class="mb-1">Open Treks</p>
                         <p class="fs-3 fw-bold mb-0">{{ openTreks|length }}</p>
                     </div>
                 </div>
@@ -36,7 +51,7 @@
             <div class="col-6 col-lg-3">
                 <div class="card h-100 text-center">
                     <div class="card-body">
-                        <p class="mb-1">my bookings</p>
+                        <p class="mb-1">My Bookings</p>
                         <p class="fs-3 fw-bold mb-0">{{ myBookings|length }}</p>
                     </div>
                 </div>
@@ -44,7 +59,7 @@
             <div class="col-6 col-lg-3">
                 <div class="card h-100 text-center">
                     <div class="card-body">
-                        <p class="mb-1">active bookings</p>
+                        <p class="mb-1">Active Bookings</p>
                         <p class="fs-3 fw-bold mb-0">{{ activeTrekIds|length }}</p>
                     </div>
                 </div>
@@ -52,7 +67,7 @@
             <div class="col-6 col-lg-3">
                 <div class="card h-100 text-center">
                     <div class="card-body">
-                        <p class="mb-1">trekker id</p>
+                        <p class="mb-1">Trekker ID</p>
                         <p class="fs-3 fw-bold mb-0">{{ currentUser.id }}</p>
                     </div>
                 </div>
@@ -61,58 +76,58 @@
 
         <div class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">my booking trends</h2>
+                <h2 class="h5 card-title">My Booking Trends</h2>
                 {% for bar in chartBars %}
                 <div class="mb-2">
                     <div class="d-flex justify-content-between">
                         <span>{{ bar.label }}</span>
                         <span>{{ bar.value }}</span>
                     </div>
-                    <div class="progress" role="progressbar">
-                        <div class="progress-bar" style="width: {{ bar.pct }}%;"></div>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: {{ bar.pct }}%;" aria-valuenow="{{ bar.pct }}" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div id="profile-section" class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">update profile</h2>
+                <h2 class="h5 card-title">Update Profile</h2>
                 <form method="post" action="/user/profile/update" class="row g-3">
                     <div class="col-12 col-md-4">
-                        <label class="form-label">name</label>
+                        <label class="form-label">Name</label>
                         <input type="text" class="form-control" name="name" value="{{ currentUser.name }}" required>
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">email</label>
+                        <label class="form-label">Email</label>
                         <input type="text" class="form-control" value="{{ currentUser.email }}" disabled>
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">new password</label>
-                        <input type="password" class="form-control" name="new_password" minlength="6" placeholder="leave blank to keep current">
+                        <label class="form-label">New Password</label>
+                        <input type="password" class="form-control" name="new_password" minlength="6" placeholder="Leave blank to keep current">
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-primary">update profile</button>
+                        <button type="submit" class="btn btn-primary">Update Profile</button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div id="available-treks-section" class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">search treks</h2>
+                <h2 class="h5 card-title">Search Treks</h2>
                 <form method="get" action="/user" class="row g-3">
                     <div class="col-12 col-md-4">
-                        <label class="form-label">difficulty</label>
+                        <label class="form-label">Difficulty</label>
                         <input type="text" class="form-control" name="difficulty" value="{{ difficulty }}">
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">location</label>
+                        <label class="form-label">Location</label>
                         <input type="text" class="form-control" name="location" value="{{ location }}">
                     </div>
                     <div class="col-12 col-md-4 d-flex align-items-end">
-                        <button type="submit" class="btn btn-secondary">search</button>
+                        <button type="submit" class="btn btn-secondary">Search</button>
                     </div>
                 </form>
             </div>
@@ -120,16 +135,16 @@
 
         <div class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">available treks</h2>
+                <h2 class="h5 card-title">Available Treks</h2>
                 <div class="table-responsive">
                     <table class="table table-striped table-bordered align-middle">
                         <thead>
                             <tr>
-                                <th>id</th>
-                                <th>details</th>
-                                <th>slots</th>
-                                <th>dates</th>
-                                <th>action</th>
+                                <th>ID</th>
+                                <th>Details</th>
+                                <th>Slots</th>
+                                <th>Dates</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -138,21 +153,21 @@
                                 <td>{{ trek.id }}</td>
                                 <td>
                                     <strong>{{ trek.trek_name }}</strong><br>
-                                    location: {{ trek.location or 'none' }}<br>
-                                    difficulty: {{ trek.difficulty }}<br>
-                                    duration: {{ trek.duration }} days
+                                    Location: {{ trek.location or 'none' }}<br>
+                                    Difficulty: {{ trek.difficulty }}<br>
+                                    Duration: {{ trek.duration }} days
                                 </td>
                                 <td>{{ trek.available_slots }}</td>
                                 <td>
-                                    start: {{ trek.start_date or 'none' }}<br>
-                                    end: {{ trek.end_date or 'none' }}
+                                    Start: {{ trek.start_date or 'none' }}<br>
+                                    End: {{ trek.end_date or 'none' }}
                                 </td>
                                 <td>
                                     {% if trek.id in activeTrekIds %}
-                                        <span class="badge text-bg-secondary">already booked</span>
+                                        <span class="badge text-bg-secondary">Already Booked</span>
                                     {% else %}
                                         <form method="post" action="/user/treks/{{ trek.id }}/book">
-                                            <button type="submit" class="btn btn-sm btn-primary">book</button>
+                                            <button type="submit" class="btn btn-sm btn-primary">Book</button>
                                         </form>
                                     {% endif %}
                                 </td>
@@ -164,19 +179,19 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div id="history-section" class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">my trekking history</h2>
+                <h2 class="h5 card-title">My Trekking History</h2>
                 <div class="table-responsive">
                     <table class="table table-striped table-bordered align-middle">
                         <thead>
                             <tr>
-                                <th>booking id</th>
-                                <th>trek</th>
-                                <th>booking status</th>
-                                <th>booking date</th>
-                                <th>completed date</th>
-                                <th>action</th>
+                                <th>Booking ID</th>
+                                <th>Trek</th>
+                                <th>Booking Status</th>
+                                <th>Booking Date</th>
+                                <th>Completed Date</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -185,9 +200,9 @@
                                 <td>{{ booking.id }}</td>
                                 <td>
                                     {{ booking.trek_name }}<br>
-                                    location: {{ booking.location or 'none' }}<br>
-                                    difficulty: {{ booking.difficulty }}<br>
-                                    trek status: {{ booking.trek_status }}
+                                    Location: {{ booking.location or 'none' }}<br>
+                                    Difficulty: {{ booking.difficulty }}<br>
+                                    Trek Status: {{ booking.trek_status }}
                                 </td>
                                 <td>{{ booking.booking_status }}</td>
                                 <td>{{ booking.booking_date }}</td>
@@ -195,7 +210,7 @@
                                 <td>
                                     {% if booking.booking_status == 'Booked' %}
                                         <form method="post" action="/user/bookings/{{ booking.id }}/cancel">
-                                            <button type="submit" class="btn btn-sm btn-danger">cancel</button>
+                                            <button type="submit" class="btn btn-sm btn-danger">Cancel</button>
                                         </form>
                                     {% endif %}
                                 </td>
@@ -204,6 +219,8 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
             </div>
         </div>
     </div>

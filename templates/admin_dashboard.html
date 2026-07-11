@@ -3,17 +3,33 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>admin dashboard</title>
+    <title>Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <div class="container py-4">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center bg-white border rounded p-3 mb-4">
-            <div>
-                <h1 class="h3 mb-1">admin dashboard</h1>
-                <p class="mb-0 text-muted">welcome, {{ currentUser.name }}</p>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12 col-md-3 col-lg-2 mb-4 mb-md-0">
+                <div class="bg-white border rounded p-3">
+                    <h5 class="mb-3">AdventureHub</h5>
+                    <div class="list-group">
+                        <a href="#dashboard-top" class="list-group-item list-group-item-action">Dashboard</a>
+                        <a href="#treks-section" class="list-group-item list-group-item-action">Treks</a>
+                        <a href="#staff-section" class="list-group-item list-group-item-action">Staff</a>
+                        <a href="#users-section" class="list-group-item list-group-item-action">Users</a>
+                        <a href="#bookings-section" class="list-group-item list-group-item-action">Bookings</a>
+                        <a href="#search-section" class="list-group-item list-group-item-action">Search</a>
+                        <a href="/logout" class="list-group-item list-group-item-action text-danger">Logout</a>
+                    </div>
+                </div>
             </div>
-            <a href="/logout" class="btn btn-outline-secondary mt-3 mt-md-0">logout</a>
+            <div class="col-12 col-md-9 col-lg-10">
+        <div id="dashboard-top" class="d-flex flex-column flex-md-row justify-content-between align-items-md-center bg-white border rounded p-3 mb-4">
+            <div>
+                <h1 class="h3 mb-1">Admin Dashboard</h1>
+                <p class="mb-0 text-muted">Welcome, {{ currentUser.name }}</p>
+            </div>
+            <a href="/logout" class="btn btn-outline-secondary mt-3 mt-md-0">Logout</a>
         </div>
 
         {% with messages = get_flashed_messages() %}
@@ -28,7 +44,7 @@
             <div class="col-6 col-lg-3">
                 <div class="card h-100 text-center">
                     <div class="card-body">
-                        <p class="mb-1">total treks</p>
+                        <p class="mb-1">Total Treks</p>
                         <p class="fs-3 fw-bold mb-0">{{ stats.trekCount }}</p>
                     </div>
                 </div>
@@ -36,7 +52,7 @@
             <div class="col-6 col-lg-3">
                 <div class="card h-100 text-center">
                     <div class="card-body">
-                        <p class="mb-1">total trekkers</p>
+                        <p class="mb-1">Total Trekkers</p>
                         <p class="fs-3 fw-bold mb-0">{{ stats.userCount }}</p>
                     </div>
                 </div>
@@ -44,7 +60,7 @@
             <div class="col-6 col-lg-3">
                 <div class="card h-100 text-center">
                     <div class="card-body">
-                        <p class="mb-1">total trek staff</p>
+                        <p class="mb-1">Total Trek Staff</p>
                         <p class="fs-3 fw-bold mb-0">{{ stats.staffCount }}</p>
                     </div>
                 </div>
@@ -52,7 +68,7 @@
             <div class="col-6 col-lg-3">
                 <div class="card h-100 text-center">
                     <div class="card-body">
-                        <p class="mb-1">total bookings</p>
+                        <p class="mb-1">Total Bookings</p>
                         <p class="fs-3 fw-bold mb-0">{{ stats.bookingCount }}</p>
                     </div>
                 </div>
@@ -61,48 +77,48 @@
 
         <div class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">overview chart</h2>
+                <h2 class="h5 card-title">Overview Chart</h2>
                 {% for bar in chartBars %}
                 <div class="mb-2">
                     <div class="d-flex justify-content-between">
                         <span>{{ bar.label }}</span>
                         <span>{{ bar.value }}</span>
                     </div>
-                    <div class="progress" role="progressbar">
-                        <div class="progress-bar" style="width: {{ bar.pct }}%;"></div>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" style="width: {{ bar.pct }}%;" aria-valuenow="{{ bar.pct }}" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div id="treks-section" class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">add trek</h2>
+                <h2 class="h5 card-title">Add Trek</h2>
                 <form method="post" action="/admin/treks/add">
                     <div class="row g-3">
                         <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">trek name</label>
+                            <label class="form-label">Trek Name</label>
                             <input type="text" class="form-control" name="trek_name" required>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">difficulty</label>
+                            <label class="form-label">Difficulty</label>
                             <input type="text" class="form-control" name="difficulty" required>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">duration</label>
+                            <label class="form-label">Duration</label>
                             <input type="number" class="form-control" name="duration" min="1" required>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">available slots</label>
+                            <label class="form-label">Available Slots</label>
                             <input type="number" class="form-control" name="available_slots" min="0" value="0" required>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">location</label>
+                            <label class="form-label">Location</label>
                             <input type="text" class="form-control" name="location">
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">status</label>
+                            <label class="form-label">Status</label>
                             <select class="form-select" name="status">
                                 <option value="Pending">Pending</option>
                                 <option value="Open">Open</option>
@@ -113,15 +129,15 @@
                             </select>
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">start date</label>
+                            <label class="form-label">Start Date</label>
                             <input type="date" class="form-control" name="start_date">
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">end date</label>
+                            <label class="form-label">End Date</label>
                             <input type="date" class="form-control" name="end_date">
                         </div>
                         <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label">assign staff</label>
+                            <label class="form-label">Assign Staff</label>
                             <select class="form-select" name="assigned_staff_id">
                                 <option value="">none</option>
                                 {% for member in staff %}
@@ -132,35 +148,35 @@
                             </select>
                         </div>
                         <div class="col-12">
-                            <label class="form-label">description</label>
+                            <label class="form-label">Description</label>
                             <textarea class="form-control" name="description"></textarea>
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-primary">save trek</button>
+                            <button type="submit" class="btn btn-primary">Save Trek</button>
                         </div>
                     </div>
                 </form>
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div id="search-section" class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">search</h2>
+                <h2 class="h5 card-title">Search</h2>
                 <form method="get" action="/admin" class="row g-3">
                     <div class="col-12 col-md-4">
-                        <label class="form-label">trek search</label>
+                        <label class="form-label">Trek Search</label>
                         <input type="text" class="form-control" name="trekSearch" value="{{ request.args.get('trekSearch', '') }}">
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">user search</label>
+                        <label class="form-label">User Search</label>
                         <input type="text" class="form-control" name="userSearch" value="{{ request.args.get('userSearch', '') }}">
                     </div>
                     <div class="col-12 col-md-4">
-                        <label class="form-label">staff search</label>
+                        <label class="form-label">Staff Search</label>
                         <input type="text" class="form-control" name="staffSearch" value="{{ request.args.get('staffSearch', '') }}">
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-secondary">search</button>
+                        <button type="submit" class="btn btn-secondary">Search</button>
                     </div>
                 </form>
             </div>
@@ -168,15 +184,15 @@
 
         <div class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">manage treks</h2>
+                <h2 class="h5 card-title">Manage Treks</h2>
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle">
                         <thead>
                             <tr>
-                                <th>id</th>
-                                <th>details</th>
-                                <th>assignment</th>
-                                <th>actions</th>
+                                <th>ID</th>
+                                <th>Details</th>
+                                <th>Assignment</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -187,27 +203,27 @@
                                     <form method="post" action="/admin/treks/{{ trek.id }}/edit">
                                         <div class="row g-2">
                                             <div class="col-12 col-md-6">
-                                                <label class="form-label small mb-0">name</label>
+                                                <label class="form-label small mb-0">Name</label>
                                                 <input type="text" class="form-control form-control-sm" name="trek_name" value="{{ trek.trek_name }}" required>
                                             </div>
                                             <div class="col-12 col-md-6">
-                                                <label class="form-label small mb-0">difficulty</label>
+                                                <label class="form-label small mb-0">Difficulty</label>
                                                 <input type="text" class="form-control form-control-sm" name="difficulty" value="{{ trek.difficulty }}" required>
                                             </div>
                                             <div class="col-6 col-md-3">
-                                                <label class="form-label small mb-0">duration</label>
+                                                <label class="form-label small mb-0">Duration</label>
                                                 <input type="number" class="form-control form-control-sm" name="duration" value="{{ trek.duration }}" min="1" required>
                                             </div>
                                             <div class="col-6 col-md-3">
-                                                <label class="form-label small mb-0">slots</label>
+                                                <label class="form-label small mb-0">Available Slots</label>
                                                 <input type="number" class="form-control form-control-sm" name="available_slots" value="{{ trek.available_slots }}" min="0" required>
                                             </div>
                                             <div class="col-12 col-md-6">
-                                                <label class="form-label small mb-0">location</label>
+                                                <label class="form-label small mb-0">Location</label>
                                                 <input type="text" class="form-control form-control-sm" name="location" value="{{ trek.location or '' }}">
                                             </div>
                                             <div class="col-12 col-md-6">
-                                                <label class="form-label small mb-0">status</label>
+                                                <label class="form-label small mb-0">Status</label>
                                                 <select class="form-select form-select-sm" name="status">
                                                     {% for statusOption in ["Pending", "Open", "Closed", "Started", "Ongoing", "Completed"] %}
                                                         <option value="{{ statusOption }}" {% if trek.status == statusOption %}selected{% endif %}>{{ statusOption }}</option>
@@ -215,26 +231,26 @@
                                                 </select>
                                             </div>
                                             <div class="col-6">
-                                                <label class="form-label small mb-0">start date</label>
+                                                <label class="form-label small mb-0">Start Date</label>
                                                 <input type="date" class="form-control form-control-sm" name="start_date" value="{{ trek.start_date or '' }}">
                                             </div>
                                             <div class="col-6">
-                                                <label class="form-label small mb-0">end date</label>
+                                                <label class="form-label small mb-0">End Date</label>
                                                 <input type="date" class="form-control form-control-sm" name="end_date" value="{{ trek.end_date or '' }}">
                                             </div>
                                             <div class="col-12">
-                                                <label class="form-label small mb-0">description</label>
+                                                <label class="form-label small mb-0">Description</label>
                                                 <textarea class="form-control form-control-sm" name="description">{{ trek.description or '' }}</textarea>
                                             </div>
                                             <div class="col-12">
-                                                <button type="submit" class="btn btn-sm btn-primary">update</button>
+                                                <button type="submit" class="btn btn-sm btn-primary">Update</button>
                                             </div>
                                         </div>
                                     </form>
                                 </td>
                                 <td>
                                     <form method="post" action="/admin/treks/{{ trek.id }}/assign" class="mb-2">
-                                        <label class="form-label small mb-0">staff</label>
+                                        <label class="form-label small mb-0">Staff</label>
                                         <select name="assigned_staff_id" class="form-select form-select-sm mb-2">
                                             <option value="">none</option>
                                             {% for member in staff %}
@@ -243,13 +259,13 @@
                                                 {% endif %}
                                             {% endfor %}
                                         </select>
-                                        <button type="submit" class="btn btn-sm btn-secondary">assign</button>
+                                        <button type="submit" class="btn btn-sm btn-secondary">Assign</button>
                                     </form>
-                                    <p class="small mb-0">current: {{ trek.staff_name or 'none' }}</p>
+                                    <p class="small mb-0">Current: {{ trek.staff_name or 'none' }}</p>
                                 </td>
                                 <td>
                                     <form method="post" action="/admin/treks/{{ trek.id }}/delete" onsubmit="return confirm('remove this trek?');">
-                                        <button type="submit" class="btn btn-sm btn-danger">remove</button>
+                                        <button type="submit" class="btn btn-sm btn-danger">Remove</button>
                                     </form>
                                 </td>
                             </tr>
@@ -260,19 +276,19 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div id="users-section" class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">manage users</h2>
+                <h2 class="h5 card-title">Manage Users</h2>
                 <div class="table-responsive">
                     <table class="table table-striped table-bordered align-middle">
                         <thead>
                             <tr>
-                                <th>id</th>
-                                <th>name</th>
-                                <th>email</th>
-                                <th>role</th>
-                                <th>status</th>
-                                <th>action</th>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -286,10 +302,10 @@
                                 <td>
                                     {% if user.role != 'admin' %}
                                     <form method="post" action="/admin/users/{{ user.id }}/toggle">
-                                        <button type="submit" class="btn btn-sm {% if user.status == 'active' %}btn-danger{% else %}btn-success{% endif %}">{% if user.status == 'active' %}blacklist{% else %}activate{% endif %}</button>
+                                        <button type="submit" class="btn btn-sm {% if user.status == 'active' %}btn-danger{% else %}btn-success{% endif %}">{% if user.status == 'active' %}Blacklist{% else %}Activate{% endif %}</button>
                                     </form>
                                     {% else %}
-                                    admin
+                                    Admin
                                     {% endif %}
                                 </td>
                             </tr>
@@ -300,20 +316,20 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div id="staff-section" class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">manage staff</h2>
+                <h2 class="h5 card-title">Manage Staff</h2>
                 <div class="table-responsive">
                     <table class="table table-striped table-bordered align-middle">
                         <thead>
                             <tr>
-                                <th>id</th>
-                                <th>name</th>
-                                <th>email</th>
-                                <th>approval</th>
-                                <th>status</th>
-                                <th>assigned trek</th>
-                                <th>actions</th>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Approval</th>
+                                <th>Status</th>
+                                <th>Assigned Trek</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -329,11 +345,11 @@
                                     <div class="d-flex gap-2 flex-wrap">
                                         {% if member.approval_status != 'approved' %}
                                         <form method="post" action="/admin/staff/{{ member.id }}/approve">
-                                            <button type="submit" class="btn btn-sm btn-success">approve</button>
+                                            <button type="submit" class="btn btn-sm btn-success">Approve</button>
                                         </form>
                                         {% endif %}
                                         <form method="post" action="/admin/staff/{{ member.id }}/blacklist">
-                                            <button type="submit" class="btn btn-sm btn-danger">blacklist</button>
+                                            <button type="submit" class="btn btn-sm btn-danger">Blacklist</button>
                                         </form>
                                     </div>
                                 </td>
@@ -345,20 +361,20 @@
             </div>
         </div>
 
-        <div class="card mb-4">
+        <div id="bookings-section" class="card mb-4">
             <div class="card-body">
-                <h2 class="h5 card-title">booking records</h2>
+                <h2 class="h5 card-title">Booking Records</h2>
                 <div class="table-responsive">
                     <table class="table table-striped table-bordered align-middle">
                         <thead>
                             <tr>
-                                <th>id</th>
-                                <th>user</th>
-                                <th>trek</th>
-                                <th>booking status</th>
-                                <th>payment status</th>
-                                <th>booking date</th>
-                                <th>completed date</th>
+                                <th>ID</th>
+                                <th>User</th>
+                                <th>Trek</th>
+                                <th>Booking Status</th>
+                                <th>Payment Status</th>
+                                <th>Booking Date</th>
+                                <th>Completed Date</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -376,6 +392,8 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+        </div>
             </div>
         </div>
     </div>

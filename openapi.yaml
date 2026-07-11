@@ -1,0 +1,411 @@
+openapi: 3.0.3
+info:
+  title: AdventureHub API
+  description: >
+    JSON API for the AdventureHub Trekking Management Application.
+    Authentication uses the same session cookie as the website -
+    log in through POST /login first, then call these endpoints
+    with that same session.
+  version: 1.0.0
+
+servers:
+  - url: http://127.0.0.1:5000
+
+tags:
+  - name: Treks
+  - name: Users
+  - name: Bookings
+
+paths:
+  /api/treks:
+    get:
+      tags: [Treks]
+      summary: List all treks (admin only)
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional text search on trek name, location or id
+      responses:
+        "200":
+          description: List of treks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trek"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Treks]
+      summary: Create a new trek (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrekInput"
+      responses:
+        "201":
+          description: Trek created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trek"
+        "400":
+          description: Invalid trek data
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/treks/{trekId}:
+    get:
+      tags: [Treks]
+      summary: Get a single trek (admin only)
+      parameters:
+        - $ref: "#/components/parameters/TrekId"
+      responses:
+        "200":
+          description: Trek details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trek"
+        "404":
+          description: Trek not found
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      tags: [Treks]
+      summary: Update a trek (admin only)
+      parameters:
+        - $ref: "#/components/parameters/TrekId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrekInput"
+      responses:
+        "200":
+          description: Updated trek
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trek"
+        "400":
+          description: Invalid trek data
+        "404":
+          description: Trek not found
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    delete:
+      tags: [Treks]
+      summary: Delete a trek (admin only)
+      parameters:
+        - $ref: "#/components/parameters/TrekId"
+      responses:
+        "200":
+          description: Trek deleted
+        "404":
+          description: Trek not found
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: List all users (admin only)
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional text search on name, email or id
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/users/{userId}:
+    get:
+      tags: [Users]
+      summary: Get a single user (admin only)
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: User not found
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/users/{userId}/status:
+    put:
+      tags: [Users]
+      summary: Activate or blacklist a user (admin only)
+      parameters:
+        - $ref: "#/components/parameters/UserId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [active, blacklisted]
+              required: [status]
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Status must be active or blacklisted
+        "404":
+          description: User not found
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/bookings:
+    get:
+      tags: [Bookings]
+      summary: List bookings (admin sees all, trekker sees only their own)
+      responses:
+        "200":
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      tags: [Bookings]
+      summary: Book a trek (trekker only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                trek_id:
+                  type: integer
+              required: [trek_id]
+      responses:
+        "201":
+          description: Trek booked
+        "400":
+          description: >
+            Trek not open, trek full, or already booked by this trekker
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/bookings/{bookingId}:
+    get:
+      tags: [Bookings]
+      summary: Get a single booking (admin, or trekker viewing their own)
+      parameters:
+        - $ref: "#/components/parameters/BookingId"
+      responses:
+        "200":
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "404":
+          description: Booking not found
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /api/bookings/{bookingId}/cancel:
+    put:
+      tags: [Bookings]
+      summary: Cancel a booking (trekker only, own bookings)
+      parameters:
+        - $ref: "#/components/parameters/BookingId"
+      responses:
+        "200":
+          description: Booking cancelled
+        "400":
+          description: Booking not found or already cancelled
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  parameters:
+    TrekId:
+      name: trekId
+      in: path
+      required: true
+      schema:
+        type: integer
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: integer
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    Unauthorized:
+      description: Not logged in
+    Forbidden:
+      description: Logged in, but role is not allowed for this endpoint
+
+  schemas:
+    Trek:
+      type: object
+      properties:
+        id:
+          type: integer
+        trek_name:
+          type: string
+        difficulty:
+          type: string
+        duration:
+          type: integer
+        available_slots:
+          type: integer
+        assigned_staff_id:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [Pending, Open, Closed, Started, Ongoing, Completed]
+        start_date:
+          type: string
+          nullable: true
+        end_date:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+
+    TrekInput:
+      type: object
+      description: All fields are sent as strings, same as the website's forms.
+      properties:
+        trek_name:
+          type: string
+        difficulty:
+          type: string
+        duration:
+          type: string
+        available_slots:
+          type: string
+        location:
+          type: string
+        status:
+          type: string
+          enum: [Pending, Open, Closed, Started, Ongoing, Completed]
+        start_date:
+          type: string
+        end_date:
+          type: string
+        description:
+          type: string
+        assigned_staff_id:
+          type: string
+      required: [trek_name, difficulty, duration, available_slots]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [admin, staff, trekker]
+        status:
+          type: string
+          enum: [active, blacklisted]
+        created_at:
+          type: string
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        trek_id:
+          type: integer
+        booking_status:
+          type: string
+          enum: [Booked, Cancelled, Completed]
+        booking_date:
+          type: string
+        payment_status:
+          type: string
+        completed_date:
+          type: string
+          nullable: true
+        user_name:
+          type: string
+        trek_name:
+          type: string
