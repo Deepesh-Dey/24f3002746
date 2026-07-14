@@ -4,11 +4,11 @@ Trekking Management Application - Modern Application Development I (IITM BS DS C
 ## Tech Stack
 - Python 3.9+ (developed and tested on Python 3.13)
 - Flask 3.1.3 (backend, routing)
-- Flask-Login 0.6.3 (session and login handling)
-- Werkzeug 3.1.8 (password hashing, installed alongside Flask)
+- SQLite (database, created automatically on first run, built into Python's standard library)
 - Jinja2 (frontend templates, installed alongside Flask)
 - Bootstrap 5.3.3 (styling, loaded from a CDN `<link>` tag in each template - no local install needed, but the browser needs internet access to load it)
-- SQLite (database, created automatically on first run, built into Python's standard library)
+- Flask-Login 0.6.3 (session and login handling)
+- Werkzeug 3.1.8 (password hashing, installed alongside Flask)
 
 ## What You Need Installed
 - Python 3.9 or newer
